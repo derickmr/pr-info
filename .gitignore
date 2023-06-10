@@ -1,0 +1,8 @@
+# TSC output
+dist/
+
+# package lock file
+package-lock.json
+
+# Dependency directories
+node_modules/
