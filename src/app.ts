@@ -19,7 +19,7 @@ app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
     const repo = req.params.repo;
 
     try {
-        const data = await github.getPullRequestsDetails(owner, repo);
+        const data = await github.getOpenPullRequestsDetails(owner, repo);
         res.send(data);
     } catch (error) {
         if (error instanceof ApiError) {

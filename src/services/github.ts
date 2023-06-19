@@ -1,6 +1,6 @@
 import axios, { HttpStatusCode } from 'axios';
 import { ApiError } from '../error/error';
-
+import { GithubPullRequest, GithubCommit, PullDetails } from '../types/github';
 
 export class GitHubService {
 
@@ -41,7 +41,7 @@ export class GitHubService {
         }
     }
 
-    async getPullRequestsDetails(owner: string, repo: string): Promise<PullInfo[]> {
+    async getOpenPullRequestsDetails(owner: string, repo: string): Promise<PullDetails[]> {
         const prs = await this.getOpenPullRequests(owner, repo);
     
         return await Promise.all(prs.map(async pr => {
@@ -54,7 +54,7 @@ export class GitHubService {
                 title: pr.title,
                 author: pr.user.login,
                 commitCount: commitCount
-            } as PullInfo
+            } as PullDetails
         }))
     }
 
@@ -69,27 +69,4 @@ export class GitHubService {
         const response = await this.fetch(url);
         return response.data as GithubCommit[]
     }
-}
-
-interface GithubUser {
-    login: string;
-}
-
-interface GithubPullRequest {
-    id: number;
-    number: number;
-    title: string;
-    user: GithubUser;
-}
-
-interface GithubCommit {
-
-}
-
-interface PullInfo {
-    id: number;
-    number: number;
-    title: string;
-    author: string;
-    commitCount: number
 }
