@@ -1,10 +1,12 @@
-import axios from 'axios';
+import axios, { HttpStatusCode } from 'axios';
+import { ApiError } from '../error/error';
+import { getReasonPhrase } from 'http-status-codes';
 
 export class GitHubService {
     private async fetch(url: string) {
         try {
             const response = await axios.get(url);
-            return response.data;
+            return response;
         } catch (error) {
             console.error(`Error fetching data from ${url}`, error);
             throw error;
@@ -30,13 +32,40 @@ export class GitHubService {
 
     async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
-        const prs = await this.fetch(url);
-        return prs as GithubPullRequest[];
+        let response;
+        
+        try {
+            response = await this.fetch(url);
+        } catch (error) {
+            console.error("Unexpected error while retrieving open pull requests");
+            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
+        }
+
+        if (response.status != HttpStatusCode.Ok && response.status != HttpStatusCode.NotModified) {
+            console.error(`Error while retrieving open pull requests: ${response.status} - ${response.statusText}`)
+            throw new ApiError(response.statusText, response.status, "Error while retrieving open pull requests");
+        }
+
+        return response.data as GithubPullRequest[];
     }
 
     async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<any> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
-        return this.fetch(url);
+        let response;
+        
+        try {
+            response = await this.fetch(url);
+        } catch (error) {
+            console.error(`Unexpected error while retrieving commits for ${repo}/${owner} PR #${pull_number}`);
+            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
+        }
+
+        if (response.status != 200) {
+            console.error(`Error while retrieving commits for ${repo}/${owner} PR #${pull_number}`);
+            throw new ApiError(response.statusText, response.status, "Error while retrieving commits");
+        }
+
+        return response.data
     }
 }
 

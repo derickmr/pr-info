@@ -8,9 +8,12 @@ app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
     const owner = req.params.owner;
     const repo = req.params.repo;
 
-    const data = await github.getPullRequestsDetails(owner, repo);
-
-    res.send(data);
+    try {
+        const data = await github.getPullRequestsDetails(owner, repo);
+        res.send(data);
+    } catch (error) {
+        res.status(500)
+    }
 });
 
 app.listen(3000, () => {
