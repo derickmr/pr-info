@@ -19,6 +19,16 @@ export class GitHubService {
                 }
             });
 
+            if (!response.data) {
+                console.error(`${url} returned no data when it should.`)
+                throw new ApiError("No Content", HttpStatusCode.NoContent, `Received no data from ${url}`);
+            }
+
+            if (response.status != HttpStatusCode.Ok && response.status != HttpStatusCode.NotModified) {
+                console.error(`Received ${response.status}: ${response.statusText} response from GET ${url}`);
+                throw new ApiError(response.statusText, response.status, `Error received from Github API when calling ${url}`);
+            }
+
             const etag = response.headers.etag;
             if (etag) {
                 this.etags.set(url, etag);
@@ -26,8 +36,8 @@ export class GitHubService {
 
             return response;
         } catch (error) {
-            console.error(`Error fetching data from ${url}`, error);
-            throw error;
+            console.error(`Error fetching data from ${url}. Error: ${(error as Error).message}`);
+            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
         }
     }
 
@@ -36,7 +46,7 @@ export class GitHubService {
     
         return await Promise.all(prs.map(async pr => {
             const commits = await this.getPullRequestCommits(owner, repo, pr.number)
-            const commitCount = (commits as any[]).length
+            const commitCount = commits.length
     
             return {
                 id: pr.id,
@@ -50,39 +60,13 @@ export class GitHubService {
 
     async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
-        let response;
-        
-        try {
-            response = await this.fetch(url);
-        } catch (error) {
-            console.error("Unexpected error while retrieving open pull requests");
-            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
-        }
-
-        if (response.status != HttpStatusCode.Ok && response.status != HttpStatusCode.NotModified) {
-            console.error(`Error while retrieving open pull requests: ${response.status} - ${response.statusText}`)
-            throw new ApiError(response.statusText, response.status, "Error while retrieving open pull requests");
-        }
-
+        const response =  await this.fetch(url);
         return response.data as GithubPullRequest[];
     }
 
     async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<GithubCommit[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
-        let response;
-        
-        try {
-            response = await this.fetch(url);
-        } catch (error) {
-            console.error(`Unexpected error while retrieving commits for ${repo}/${owner} PR #${pull_number}`);
-            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
-        }
-
-        if (response.status != 200) {
-            console.error(`Error while retrieving commits for ${repo}/${owner} PR #${pull_number}`);
-            throw new ApiError(response.statusText, response.status, "Error while retrieving commits");
-        }
-
+        const response = await this.fetch(url);
         return response.data as GithubCommit[]
     }
 }
