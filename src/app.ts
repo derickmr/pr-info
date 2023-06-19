@@ -1,6 +1,9 @@
+import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import { GitHubService } from './services/github';
+import { ApiError } from './error/error';
 
+dotenv.config();
 const app = express();
 const github = new GitHubService();
 
@@ -12,7 +15,8 @@ app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
         const data = await github.getPullRequestsDetails(owner, repo);
         res.send(data);
     } catch (error) {
-        res.status(500)
+        const apiError = error as ApiError;
+        res.status(apiError.httpCode).send(apiError)
     }
 });
 

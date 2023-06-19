@@ -1,11 +1,29 @@
 import axios, { HttpStatusCode } from 'axios';
 import { ApiError } from '../error/error';
-import { getReasonPhrase } from 'http-status-codes';
+
 
 export class GitHubService {
+
+    etags: Map<string, string>;
+
+    constructor() {
+        this.etags = new Map()
+    }
+
     private async fetch(url: string) {
         try {
-            const response = await axios.get(url);
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+                    'If-None-Match': this.etags.get(url),
+                }
+            });
+
+            const etag = response.headers.etag;
+            if (etag) {
+                this.etags.set(url, etag);
+            }
+
             return response;
         } catch (error) {
             console.error(`Error fetching data from ${url}`, error);
@@ -49,7 +67,7 @@ export class GitHubService {
         return response.data as GithubPullRequest[];
     }
 
-    async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<any> {
+    async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<GithubCommit[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
         let response;
         
@@ -65,7 +83,7 @@ export class GitHubService {
             throw new ApiError(response.statusText, response.status, "Error while retrieving commits");
         }
 
-        return response.data
+        return response.data as GithubCommit[]
     }
 }
 
@@ -78,6 +96,10 @@ interface GithubPullRequest {
     number: number;
     title: string;
     user: GithubUser;
+}
+
+interface GithubCommit {
+
 }
 
 interface PullInfo {
