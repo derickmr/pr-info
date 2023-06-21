@@ -10,6 +10,35 @@ export class GitHubService {
         this.etags = new Map()
     }
 
+    async getOpenPullRequestsDetails(owner: string, repo: string): Promise<PullDetails[]> {
+        const prs = await this.getOpenPullRequests(owner, repo);
+    
+        return await Promise.all(prs.map(async pr => {
+            const commits = await this.getPullRequestCommits(owner, repo, pr.number)
+            const commitCount = commits.length
+    
+            return {
+                id: pr.id,
+                number: pr.number,
+                title: pr.title,
+                author: pr.user.login,
+                commitCount: commitCount
+            } as PullDetails
+        }))
+    }
+
+    async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
+        const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
+        const response =  await this.fetch(url);
+        return response.data as GithubPullRequest[];
+    }
+
+    async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<GithubCommit[]> {
+        const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
+        const response = await this.fetch(url);
+        return response.data as GithubCommit[]
+    }
+
     private async fetch(url: string) {
         try {
             const response = await axios.get(url, {
@@ -39,34 +68,5 @@ export class GitHubService {
             console.error(`Error fetching data from ${url}. Error: ${(error as Error).message}`);
             throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
         }
-    }
-
-    async getOpenPullRequestsDetails(owner: string, repo: string): Promise<PullDetails[]> {
-        const prs = await this.getOpenPullRequests(owner, repo);
-    
-        return await Promise.all(prs.map(async pr => {
-            const commits = await this.getPullRequestCommits(owner, repo, pr.number)
-            const commitCount = commits.length
-    
-            return {
-                id: pr.id,
-                number: pr.number,
-                title: pr.title,
-                author: pr.user.login,
-                commitCount: commitCount
-            } as PullDetails
-        }))
-    }
-
-    async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
-        const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
-        const response =  await this.fetch(url);
-        return response.data as GithubPullRequest[];
-    }
-
-    async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<GithubCommit[]> {
-        const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
-        const response = await this.fetch(url);
-        return response.data as GithubCommit[]
     }
 }
