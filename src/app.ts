@@ -4,6 +4,7 @@ import { PullRequestController } from './controllers/pullRequestController';
 
 dotenv.config();
 
+//GITHUB_TOKEN is required for this app to run properly. Otherwise, requests to GH API would be very limited due to rate limiting.
 if (!process.env.GITHUB_TOKEN) {
     console.error('This app requires GitHub token to be set as GITHUB_TOKEN env var. More details in https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting. Exiting...');
     process.exit(1);

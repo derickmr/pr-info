@@ -1,5 +1,8 @@
 import { HttpStatusCode } from "axios";
 
+/**
+ * A custom error for handling API errors, which includes the http code and name for the error (e.g. 500 - Internal server error)
+ */
 export class ApiError extends Error {
     public readonly name: string;
     public readonly httpCode: HttpStatusCode;

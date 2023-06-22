@@ -1,15 +1,28 @@
-import axios, { AxiosError, HttpStatusCode } from 'axios';
+import axios, { AxiosError, AxiosResponse, HttpStatusCode } from 'axios';
 import { ApiError } from '../error/error';
 import { GithubPullRequest, GithubCommit, PullDetails } from '../types/github';
 
+/**
+ * Class that interacts with Github API.
+ */
 export class GitHubService {
 
+    /**
+     * etags for every URL request are stored in this map (URL -> etag) and sent in the request headers.
+     * This prevents rate limit consumption in case the data in GH hasn't changed.
+     */
     etags: Map<string, string>;
 
     constructor() {
         this.etags = new Map()
     }
 
+    /**
+     * Based on provided owner id and repository id, it retrieves all the open PRs from GH, and for each open PR, also includes commit information.
+     * @param owner the repository owner id
+     * @param repo the repository id
+     * @returns an array of {@link PullDetails}, representing detailed information of each open PR in the repository.
+     */
     async getOpenPullRequestsDetails(owner: string, repo: string): Promise<PullDetails[]> {
         const prs = await this.getOpenPullRequests(owner, repo);
 
@@ -27,19 +40,39 @@ export class GitHubService {
         }))
     }
 
+    /**
+     * Gets open PRs for provided owner id and repo id.
+     * @param owner the owner id
+     * @param repo the repository id
+     * @returns an array of {@link GithubPullRequest} representing the open PRs in the repo
+     */
     async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
         const response = await this.fetch(url);
         return response.data as GithubPullRequest[];
     }
 
+    /**
+     * Gets commit details for provided PR
+     * @param owner the owner id
+     * @param repo the repository id
+     * @param pull_number the PR number
+     * @returns an array of {@link GithubCommit} representing the commit details for the pull request
+     */
     async getPullRequestCommits(owner: string, repo: string, pull_number: number): Promise<GithubCommit[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pull_number}/commits`;
         const response = await this.fetch(url);
         return response.data as GithubCommit[]
     }
 
-    private async fetch(url: string) {
+    /**
+     * Make a GET request on the provided Github url, passing the GH token and etag for the request in the headers.
+     * The GH token is required to make the rate limiting larger, otherwise requests would start failing after a couple of times.
+     * @param url the github URL being called
+     * @returns a {@link AxiosResponse} promise containing the response details
+     * @throws an {@link ApiError} in case the request fails
+     */
+    private async fetch(url: string): Promise<AxiosResponse<any, any>> {
         try {
             const response = await axios.get(url, {
                 headers: {
