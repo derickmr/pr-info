@@ -90,42 +90,42 @@ export class GitHubService {
         } catch (error) {
             const axiosError = error as AxiosError;
 
-            if (axiosError.response) {
-                let errorMessage;
-                switch (axiosError.response.status) {
-                    case HttpStatusCode.NotModified:
-                        //304 is a valid response from GH, as it indicates the data hasn't changed since last time. Just return the response in this case
-                        return axiosError.response;
-
-                    case HttpStatusCode.NotFound:
-                        errorMessage = `The resource at ${url} was not found.`;
-                        console.error(errorMessage);
-                        throw new ApiError('Not Found', HttpStatusCode.NotFound, errorMessage);
-
-                    case HttpStatusCode.Unauthorized:
-                        errorMessage = 'The GitHub token is invalid.';
-                        console.error(errorMessage);
-                        throw new ApiError('Unauthorized', HttpStatusCode.Unauthorized, errorMessage);
-
-                    case HttpStatusCode.Forbidden:
-                        errorMessage = 'The GitHub token does not have the necessary permissions.';
-                        console.error(errorMessage);
-                        throw new ApiError('Forbidden', HttpStatusCode.Forbidden, errorMessage);
-
-                    case HttpStatusCode.BadRequest:
-                        errorMessage = `Bad request to ${url}.`;
-                        console.error(errorMessage);
-                        throw new ApiError('Bad Request', HttpStatusCode.BadRequest, errorMessage);
-                        
-                    default:
-                        errorMessage = `Unexpected error when calling ${url}. Reason: ${axiosError.message}`;
-                        console.error(errorMessage);
-                        throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, errorMessage);
-                }
-            } else {
+            if (!axiosError.response) {
                 const errorMessage = `Error when calling ${url}. Reason: ${axiosError.message}`;
                 console.error(errorMessage);
                 throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, errorMessage);
+            }
+
+            let errorMessage;
+            switch (axiosError.response.status) {
+                case HttpStatusCode.NotModified:
+                    //304 is a valid response from GH, as it indicates the data hasn't changed since last time. Just return the response in this case
+                    return axiosError.response;
+
+                case HttpStatusCode.NotFound:
+                    errorMessage = `The resource at ${url} was not found.`;
+                    console.error(errorMessage);
+                    throw new ApiError('Not Found', HttpStatusCode.NotFound, errorMessage);
+
+                case HttpStatusCode.Unauthorized:
+                    errorMessage = 'The GitHub token is invalid.';
+                    console.error(errorMessage);
+                    throw new ApiError('Unauthorized', HttpStatusCode.Unauthorized, errorMessage);
+
+                case HttpStatusCode.Forbidden:
+                    errorMessage = 'The GitHub token does not have the necessary permissions.';
+                    console.error(errorMessage);
+                    throw new ApiError('Forbidden', HttpStatusCode.Forbidden, errorMessage);
+
+                case HttpStatusCode.BadRequest:
+                    errorMessage = `Bad request to ${url}.`;
+                    console.error(errorMessage);
+                    throw new ApiError('Bad Request', HttpStatusCode.BadRequest, errorMessage);
+
+                default:
+                    errorMessage = `Unexpected error when calling ${url}. Reason: ${axiosError.message}`;
+                    console.error(errorMessage);
+                    throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, errorMessage);
             }
         }
     }
