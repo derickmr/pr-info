@@ -1,7 +1,7 @@
-import axios, { HttpStatusCode } from 'axios';
-import { GitHubService } from '../../src/services/github';
-import { GithubPullRequest, GithubCommit } from '../../src/types/github';
-import { ApiError } from '../../src/error/error';
+import axios, { AxiosError, HttpStatusCode } from 'axios';
+import { GitHubService } from '../../../src/services/github';
+import { GithubPullRequest, GithubCommit } from '../../../src/types/github';
+import { ApiError } from '../../../src/error/error';
 
 jest.mock('axios');
 
@@ -42,7 +42,7 @@ describe('GitHubService', () => {
                 number: pullRequest.number,
                 title: pullRequest.title,
                 author: pullRequest.user.login,
-                commitCount: 1,
+                commit_count: 1,
             });
         });
 
@@ -122,11 +122,40 @@ describe('GitHubService', () => {
                 expect(result[0]).toEqual(pullRequest);
             });
 
+            it('should throw no error when response is a 304 Not Modified', async () => {
+                const owner = 'owner';
+                const repo = 'repo';
+                const data = [
+                    {
+                        id: 1,
+                        number: 123,
+                        title: 'Test Pull',
+                        user: { login: 'test-owner' },
+                    },
+                ];
+    
+                jest.spyOn(axios, 'get').mockImplementationOnce(() => {
+                    const response = {
+                        status: HttpStatusCode.NotModified,
+                        statusText: "Not Modified",
+                        data: data,
+                        headers: {},
+                        config: {},
+                    };
+    
+                    return Promise.resolve(response);
+                });
+    
+                const result = await service.getOpenPullRequests(owner, repo);
+                expect(result).toEqual(data);
+                expect(axios.get).toHaveBeenCalledTimes(1);
+            });
+
             it('should send request to correct url', async () => {
                 const owner = 'test-owner';
                 const repo = 'test-repo';
                 const expectedUrl = `https://api.github.com/repos/test-owner/test-repo/pulls?state=open`;
-    
+
                 mockedAxios.get.mockResolvedValue({
                     data: [],
                     status: 200,
@@ -134,9 +163,9 @@ describe('GitHubService', () => {
                     headers: {},
                     config: {}
                 });
-          
+
                 await service.getOpenPullRequests(owner, repo);
-                
+
                 expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl, expect.anything());
             });
 
@@ -144,12 +173,12 @@ describe('GitHubService', () => {
                 const commit: GithubCommit = {
                     sha: "28de45b18d12c528af44f4299b5d422892e18ed1"
                 };
-    
+
                 const etag = "test-etag";
                 process.env.GITHUB_TOKEN = "test-token"
-    
+
                 service.etags.set("https://api.github.com/repos/test-owner/test-repo/pulls?state=open", etag);
-    
+
                 mockedAxios.get.mockResolvedValue({
                     data: [commit],
                     status: 200,
@@ -159,19 +188,19 @@ describe('GitHubService', () => {
                     },
                     config: {},
                 });
-    
+
                 const expectedRequestHeaders = {
                     headers: {
                         'Authorization': `token test-token`,
                         'If-None-Match': etag,
                     }
                 };
-    
+
                 const owner = 'test-owner';
                 const repo = 'test-repo';
-    
+
                 await service.getOpenPullRequests(owner, repo);
-                
+
                 expect(mockedAxios.get).toHaveBeenCalledWith(expect.anything(), expectedRequestHeaders);
             });
 
@@ -179,7 +208,7 @@ describe('GitHubService', () => {
                 const owner = 'test-owner';
                 const repo = 'test-repo';
                 const expectedUrl = `https://api.github.com/repos/test-owner/test-repo/pulls?state=open`;
-    
+
                 mockedAxios.get.mockResolvedValue({
                     data: [],
                     status: 200,
@@ -189,7 +218,7 @@ describe('GitHubService', () => {
                     },
                     config: {}
                 });
-          
+
                 await service.getOpenPullRequests(owner, repo);
                 expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl, expect.anything());
                 expect(service.etags.has("https://api.github.com/repos/test-owner/test-repo/pulls?state=open")).toBe(true);
@@ -211,26 +240,20 @@ describe('GitHubService', () => {
                 const owner = 'owner';
                 const repo = 'repo';
 
-                jest.spyOn(axios, 'get').mockResolvedValueOnce({
-                    status: HttpStatusCode.BadRequest,
-                    statusText: 'Bad Request',
-                    data: {},
-                    headers: {}
-                });
-
-                await expect(service.getOpenPullRequests(owner, repo)).rejects.toThrow(ApiError);
-                expect(axios.get).toHaveBeenCalledTimes(1);
-            });
-
-            it('should throw error if no data is returned', async () => {
-                const owner = 'owner';
-                const repo = 'repo';
-
-                jest.spyOn(axios, 'get').mockResolvedValueOnce({
-                    status: HttpStatusCode.Ok,
-                    statusText: 'Ok',
-                    data: null,
-                    headers: {}
+                jest.spyOn(axios, 'get').mockImplementationOnce(() => {
+                    const error = {
+                        isAxiosError: true,
+                        toJSON: () => { },
+                        response: {
+                            status: HttpStatusCode.BadRequest,
+                            statusText: "Bad Request",
+                            data: {},
+                            headers: {},
+                            config: {},
+                        },
+                        message: "Bad Request",
+                    } as AxiosError;
+                    return Promise.reject(error);
                 });
 
                 await expect(service.getOpenPullRequests(owner, repo)).rejects.toThrow(ApiError);
@@ -264,6 +287,29 @@ describe('GitHubService', () => {
             });
         });
 
+        it('should throw no error when response is a 304 Not Modified', async () => {
+            const owner = 'owner';
+            const repo = 'repo';
+            const pull_number = 123;
+            const data = new Array(5).fill({"sha": "test_sha_1"});
+
+            jest.spyOn(axios, 'get').mockImplementationOnce(() => {
+                const response = {
+                    status: HttpStatusCode.NotModified,
+                    statusText: "Not Modified",
+                    data: data,
+                    headers: {},
+                    config: {},
+                };
+
+                return Promise.resolve(response);
+            });
+
+            const result = await service.getPullRequestCommits(owner, repo, pull_number);
+            expect(result).toEqual(data);
+            expect(axios.get).toHaveBeenCalledTimes(1);
+        });
+
         it('should send request to correct url', async () => {
             const commit: GithubCommit = {
                 sha: "28de45b18d12c528af44f4299b5d422892e18ed1"
@@ -283,7 +329,7 @@ describe('GitHubService', () => {
             const expectedUrl = `https://api.github.com/repos/test-owner/test-repo/pulls/123/commits`;
 
             await service.getPullRequestCommits(owner, repo, pull_number);
-            
+
             expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl, expect.anything());
         });
 
@@ -319,7 +365,7 @@ describe('GitHubService', () => {
             const pull_number = 123;
 
             await service.getPullRequestCommits(owner, repo, pull_number);
-            
+
             expect(mockedAxios.get).toHaveBeenCalledWith(expect.anything(), expectedRequestHeaders);
         });
 
@@ -343,7 +389,7 @@ describe('GitHubService', () => {
             const pull_number = 123;
 
             await service.getPullRequestCommits(owner, repo, pull_number);
-            
+
             expect(service.etags.has("https://api.github.com/repos/test-owner/test-repo/pulls/123/commits")).toBe(true);
             expect(service.etags.get("https://api.github.com/repos/test-owner/test-repo/pulls/123/commits")).toEqual("test-etag");
         });
@@ -365,27 +411,20 @@ describe('GitHubService', () => {
             const repo = 'repo';
             const pull_number = 123;
 
-            jest.spyOn(axios, 'get').mockResolvedValueOnce({
-                status: HttpStatusCode.BadRequest,
-                statusText: 'Bad Request',
-                data: {},
-                headers: {}
-            });
-
-            await expect(service.getPullRequestCommits(owner, repo, pull_number)).rejects.toThrow(ApiError);
-            expect(axios.get).toHaveBeenCalledTimes(1);
-        });
-
-        it('should throw error if no data is returned', async () => {
-            const owner = 'owner';
-            const repo = 'repo';
-            const pull_number = 123;
-
-            jest.spyOn(axios, 'get').mockResolvedValueOnce({
-                status: HttpStatusCode.Ok,
-                statusText: 'Ok',
-                data: null,
-                headers: {}
+            jest.spyOn(axios, 'get').mockImplementationOnce(() => {
+                const error = {
+                    isAxiosError: true,
+                    toJSON: () => { },
+                    response: {
+                        status: HttpStatusCode.BadRequest,
+                        statusText: "Bad Request",
+                        data: {},
+                        headers: {},
+                        config: {},
+                    },
+                    message: "Bad Request",
+                } as AxiosError;
+                return Promise.reject(error);
             });
 
             await expect(service.getPullRequestCommits(owner, repo, pull_number)).rejects.toThrow(ApiError);

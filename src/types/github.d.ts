@@ -20,5 +20,5 @@ export interface PullDetails {
     number: number;
     title: string;
     author: string;
-    commitCount: number
+    commit_count: number
 }

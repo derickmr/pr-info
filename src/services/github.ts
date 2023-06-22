@@ -1,4 +1,4 @@
-import axios, { HttpStatusCode } from 'axios';
+import axios, { AxiosError, HttpStatusCode } from 'axios';
 import { ApiError } from '../error/error';
 import { GithubPullRequest, GithubCommit, PullDetails } from '../types/github';
 
@@ -12,24 +12,24 @@ export class GitHubService {
 
     async getOpenPullRequestsDetails(owner: string, repo: string): Promise<PullDetails[]> {
         const prs = await this.getOpenPullRequests(owner, repo);
-    
+
         return await Promise.all(prs.map(async pr => {
             const commits = await this.getPullRequestCommits(owner, repo, pr.number)
-            const commitCount = commits.length
-    
+            const commit_count = commits.length
+
             return {
                 id: pr.id,
                 number: pr.number,
                 title: pr.title,
                 author: pr.user.login,
-                commitCount: commitCount
+                commit_count: commit_count
             } as PullDetails
         }))
     }
 
     async getOpenPullRequests(owner: string, repo: string): Promise<GithubPullRequest[]> {
         const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=open`;
-        const response =  await this.fetch(url);
+        const response = await this.fetch(url);
         return response.data as GithubPullRequest[];
     }
 
@@ -48,16 +48,6 @@ export class GitHubService {
                 }
             });
 
-            if (!response.data) {
-                console.error(`${url} returned no data when it should.`)
-                throw new ApiError("No Content", HttpStatusCode.NoContent, `Received no data from ${url}`);
-            }
-
-            if (response.status != HttpStatusCode.Ok && response.status != HttpStatusCode.NotModified) {
-                console.error(`Received ${response.status}: ${response.statusText} response from GET ${url}`);
-                throw new ApiError(response.statusText, response.status, `Error received from Github API when calling ${url}`);
-            }
-
             const etag = response.headers.etag;
             if (etag) {
                 this.etags.set(url, etag);
@@ -65,8 +55,15 @@ export class GitHubService {
 
             return response;
         } catch (error) {
-            console.error(`Error fetching data from ${url}. Error: ${(error as Error).message}`);
-            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, (error as Error).message);
+            //304 is a valid response from GH, as it indicates the data hasn't changed since last time. Just return the response in this case
+            const axiosError = error as AxiosError;
+            if (axiosError.response && axiosError.response.status === HttpStatusCode.NotModified) {
+                return axiosError.response;
+            }
+
+            const errorMessage = `Error when calling ${url}. Reason: ${axiosError.message}`;
+            console.error(errorMessage);
+            throw new ApiError('Internal server error', HttpStatusCode.InternalServerError, errorMessage);
         }
     }
 }

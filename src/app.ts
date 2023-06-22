@@ -13,6 +13,7 @@ if (!process.env.GITHUB_TOKEN) {
 
 const app = express();
 const github = new GitHubService();
+const PORT = process.env.PORT || 3000;
 
 app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
     const owner = req.params.owner;
@@ -25,11 +26,12 @@ app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
         if (error instanceof ApiError) {
             const apiError = error as ApiError;
             res.status(apiError.httpCode).send(apiError)
+            return;
         }
         res.status(HttpStatusCode.InternalServerError).send(error)
     }
 });
 
-app.listen(3000, () => {
-    console.log('App is listening on port 3000!');
+export const server = app.listen(PORT, () => {
+    console.log(`App is listening on port ${PORT}!`);
 });
