@@ -30,7 +30,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .get('/repos/test-owner/test-repo/pulls/123/commits')
             .reply(200, new Array(5).fill({ "sha": "test_sha_1" }));
 
-        const res = await request(server).get('/test-owner/test-repo/pulls');
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
 
         expect(res.status).toEqual(200);
         expect(res.body).toEqual(pulls);
@@ -118,7 +118,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .get('/repos/test-owner/test-repo/pulls/5/commits')
             .reply(200, new Array(5).fill({ "sha": "test_sha_1" }));
 
-        const res = await request(server).get('/test-owner/test-repo/pulls');
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
 
         expect(res.status).toEqual(200);
         expect(res.body).toEqual(pulls);
@@ -129,7 +129,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .get('/repos/test-owner/test-repo/pulls?state=open')
             .replyWithError('Failed to fetch pulls');
 
-        const res = await request(server).get('/test-owner/test-repo/pulls');
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
         const expectedError = new ApiError("Internal server error", 500, "Error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Failed to fetch pulls");
 
         expect(res.status).toEqual(500);
@@ -141,7 +141,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .get('/repos/test-owner/test-repo/pulls?state=open')
             .reply(404, [{}]);
 
-        const res = await request(server).get('/test-owner/test-repo/pulls');
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
         const expectedError = new ApiError("Internal server error", 500, "Error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Request failed with status code 404");
 
         expect(res.status).toEqual(500);
@@ -153,7 +153,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .get('/repos/test-owner/test-repo/pulls?state=open')
             .reply(500, [{}]);
 
-        const res = await request(server).get('/test-owner/test-repo/pulls');
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
         const expectedError = new ApiError("Internal server error", 500, "Error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Request failed with status code 500");
 
         expect(res.status).toEqual(500);
