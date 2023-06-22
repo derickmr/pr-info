@@ -1,8 +1,7 @@
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
-import { GitHubService } from './services/github';
-import { ApiError } from './error/error';
-import { HttpStatusCode } from 'axios';
+import { GitHubService } from './services/githubService';
+import { getOpenPullRequestsDetails } from './controllers/pullRequestController';
 
 dotenv.config();
 
@@ -15,22 +14,7 @@ const app = express();
 const github = new GitHubService();
 const PORT = process.env.PORT || 3000;
 
-app.get('/:owner/:repo/pulls', async (req: Request, res: Response) => {
-    const owner = req.params.owner;
-    const repo = req.params.repo;
-
-    try {
-        const data = await github.getOpenPullRequestsDetails(owner, repo);
-        res.send(data);
-    } catch (error) {
-        if (error instanceof ApiError) {
-            const apiError = error as ApiError;
-            res.status(apiError.httpCode).send(apiError)
-            return;
-        }
-        res.status(HttpStatusCode.InternalServerError).send(error)
-    }
-});
+app.get('/:owner/:repo/pulls', getOpenPullRequestsDetails);
 
 export const server = app.listen(PORT, () => {
     console.log(`App is listening on port ${PORT}!`);

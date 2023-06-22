@@ -1,5 +1,5 @@
 import axios, { AxiosError, HttpStatusCode } from 'axios';
-import { GitHubService } from '../../../src/services/github';
+import { GitHubService } from '../../../src/services/githubService';
 import { GithubPullRequest, GithubCommit } from '../../../src/types/github';
 import { ApiError } from '../../../src/error/error';
 
