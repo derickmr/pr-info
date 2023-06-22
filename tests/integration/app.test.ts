@@ -136,15 +136,51 @@ describe('GET /:owner/:repo/pulls', () => {
         expect(res.body).toStrictEqual(expectedError.toJSON());
     });
 
-    it('should return 500 status and error in the response body when call to GH returns a 404 response', async () => {
+    it('should return 400 status and error in the response body when request to GH is malformed', async () => {
+        nock('https://api.github.com')
+            .get('/repos/test-owner/test-repo/pulls?state=open')
+            .reply(400, [{}]);
+
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
+        const expectedError = new ApiError("Bad Request", 400, "Bad request to https://api.github.com/repos/test-owner/test-repo/pulls?state=open.");
+
+        expect(res.status).toEqual(400);
+        expect(res.body).toStrictEqual(expectedError.toJSON());
+    });
+
+    it('should return 401 status and error in the response body when GH token is invalid', async () => {
+        nock('https://api.github.com')
+            .get('/repos/test-owner/test-repo/pulls?state=open')
+            .reply(401, [{}]);
+
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
+        const expectedError = new ApiError("Unauthorized", 401, "The GitHub token is invalid.");
+
+        expect(res.status).toEqual(401);
+        expect(res.body).toStrictEqual(expectedError.toJSON());
+    });
+
+    it('should return 403 status and error in the response body when GH token does not have the required permissions', async () => {
+        nock('https://api.github.com')
+            .get('/repos/test-owner/test-repo/pulls?state=open')
+            .reply(403, [{}]);
+
+        const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
+        const expectedError = new ApiError("Forbidden", 403, "The GitHub token does not have the necessary permissions.");
+
+        expect(res.status).toEqual(403);
+        expect(res.body).toStrictEqual(expectedError.toJSON());
+    });
+
+    it('should return 404 status and error in the response body when repo is not found', async () => {
         nock('https://api.github.com')
             .get('/repos/test-owner/test-repo/pulls?state=open')
             .reply(404, [{}]);
 
         const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
-        const expectedError = new ApiError("Internal server error", 500, "Error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Request failed with status code 404");
+        const expectedError = new ApiError("Not Found", 404, "The resource at https://api.github.com/repos/test-owner/test-repo/pulls?state=open was not found.");
 
-        expect(res.status).toEqual(500);
+        expect(res.status).toEqual(404);
         expect(res.body).toStrictEqual(expectedError.toJSON());
     });
 
@@ -154,7 +190,7 @@ describe('GET /:owner/:repo/pulls', () => {
             .reply(500, [{}]);
 
         const res = await request(server).get('/api/v1/repos/test-owner/test-repo/pulls');
-        const expectedError = new ApiError("Internal server error", 500, "Error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Request failed with status code 500");
+        const expectedError = new ApiError("Internal server error", 500, "Unexpected error when calling https://api.github.com/repos/test-owner/test-repo/pulls?state=open. Reason: Request failed with status code 500");
 
         expect(res.status).toEqual(500);
         expect(res.body).toStrictEqual(expectedError.toJSON());
